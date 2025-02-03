@@ -8,6 +8,9 @@ var historyFileName = "history.json";
 
 var configuration = new ConfigurationBuilder()
     .AddJsonFile("appsettings.json")
+#if DEBUG
+    .AddUserSecrets<Program>()
+#endif
     .Build();
 
 var kernelBuilder = Kernel.CreateBuilder();
