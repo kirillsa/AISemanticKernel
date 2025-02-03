@@ -56,14 +56,24 @@ while (true)
     chatHistory.AddUserMessage(prompt);
 
     var responseText = new StringBuilder();
-    await foreach (var response in chat.GetStreamingChatMessageContentsAsync(chatHistory))
-    {
-        responseText.Append(response.Content);
-        Console.Write(response.Content);
-        //await Task.Delay(100);
-    };
 
-    chatHistory.AddAssistantMessage(responseText.ToString());
+    try
+    {
+        await foreach (var response in chat.GetStreamingChatMessageContentsAsync(chatHistory))
+        {
+            responseText.Append(response.Content);
+            Console.Write(response.Content);
+            //await Task.Delay(100);
+        };
+
+        chatHistory.AddAssistantMessage(responseText.ToString());
+    }
+    catch (Exception exception)
+    {
+        Console.WriteLine("Last prompt will not proceed due to exception.");
+        chatHistory.RemoveAt(chatHistory.Count - 1);
+        Console.WriteLine($"Exception message: {exception.Message}");
+    }
 }
 
 // store history to a file
