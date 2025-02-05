@@ -20,44 +20,48 @@ var configuration = new ConfigurationBuilder()
 #endif
     .Build();
 
+var kernelBuilder = Kernel.CreateBuilder();
+
 # region Setup AppInsights
 var connectionString = configuration.GetValue<string>("ApplicationInsights:ConnectionString");
-var resourceBuilder = ResourceBuilder
-    .CreateDefault()
-    .AddService(configuration.GetValue<string>("ServiceName")!);
-
-// Enable model diagnostics with sensitive data.
-AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiagnosticsSensitive", true);
-
-using var traceProvider = Sdk.CreateTracerProviderBuilder()
-    .SetResourceBuilder(resourceBuilder)
-    .AddSource("Microsoft.SemanticKernel*")
-    .AddAzureMonitorTraceExporter(options => options.ConnectionString = connectionString)
-    .Build();
-
-using var meterProvider = Sdk.CreateMeterProviderBuilder()
-    .SetResourceBuilder(resourceBuilder)
-    .AddMeter("Microsoft.SemanticKernel*", "System*")
-    .AddAzureMonitorMetricExporter(options => options.ConnectionString = connectionString)
-    .Build();
-
-using var loggerFactory = LoggerFactory.Create(builder =>
+if (!string.IsNullOrWhiteSpace(connectionString))
 {
-    // Add OpenTelemetry as a logging provider
-    builder.AddOpenTelemetry(options =>
+    var resourceBuilder = ResourceBuilder
+        .CreateDefault()
+        .AddService(configuration.GetValue<string>("ServiceName")!);
+
+    // Enable model diagnostics with sensitive data.
+    AppContext.SetSwitch("Microsoft.SemanticKernel.Experimental.GenAI.EnableOTelDiagnosticsSensitive", true);
+
+    using var traceProvider = Sdk.CreateTracerProviderBuilder()
+        .SetResourceBuilder(resourceBuilder)
+        .AddSource("Microsoft.SemanticKernel*")
+        .AddAzureMonitorTraceExporter(options => options.ConnectionString = connectionString)
+        .Build();
+
+    using var meterProvider = Sdk.CreateMeterProviderBuilder()
+        .SetResourceBuilder(resourceBuilder)
+        .AddMeter("Microsoft.SemanticKernel*", "System*")
+        .AddAzureMonitorMetricExporter(options => options.ConnectionString = connectionString)
+        .Build();
+
+    using var loggerFactory = LoggerFactory.Create(builder =>
     {
-        options.SetResourceBuilder(resourceBuilder);
-        options.AddAzureMonitorLogExporter(options => options.ConnectionString = connectionString);
-        options.IncludeFormattedMessage = true;
-        options.IncludeScopes = true;
+        // Add OpenTelemetry as a logging provider
+        builder.AddOpenTelemetry(options =>
+        {
+            options.SetResourceBuilder(resourceBuilder);
+            options.AddAzureMonitorLogExporter(options => options.ConnectionString = connectionString);
+            options.IncludeFormattedMessage = true;
+            options.IncludeScopes = true;
+        });
+        builder.SetMinimumLevel(LogLevel.Trace);
     });
-    builder.SetMinimumLevel(LogLevel.Trace);
-});
+
+    kernelBuilder.Services.AddSingleton(loggerFactory);
+}
 #endregion
 
-var kernelBuilder = Kernel.CreateBuilder();
-kernelBuilder.Services.AddSingleton(loggerFactory);
-kernelBuilder.Services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
 kernelBuilder.AddAzureOpenAIChatCompletion(
     configuration["AI:DelpoymentModel"]!,
     configuration["AI:Endpoint"]!,
