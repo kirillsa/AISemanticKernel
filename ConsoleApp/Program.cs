@@ -45,7 +45,7 @@ if (!string.IsNullOrWhiteSpace(connectionString))
         .AddAzureMonitorMetricExporter(options => options.ConnectionString = connectionString)
         .Build();
 
-    using var loggerFactory = LoggerFactory.Create(builder =>
+    var loggerFactory = LoggerFactory.Create(builder =>
     {
         // Add OpenTelemetry as a logging provider
         builder.AddOpenTelemetry(options =>
